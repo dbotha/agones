@@ -151,6 +151,20 @@ endif()
 set(AGONES_OWN_GRPC FALSE CACHE BOOL "Third party is built by Agones")
 if (NOT ${gRPC_FOUND})
     download_git_repo(gRPC ${gRPC_GIT_REPO} ${gRPC_GIT_TAG})
+    # @dbotha: I need to patch log_linux.cc to avoid ambiguating new declaration
+    # of 'long int gettid()' error when compiling under Alpine Linux 3.14
+    # container. This has actually being fixed in new versions of gRPC
+    # (see https://github.com/grpc/grpc/pull/18950) however agones explicitly
+    # requires a much older version: v1.20.1
+    execute_process(COMMAND patch ${gRPC_SOURCE_DIR}/src/core/lib/gpr/log_linux.cc ./patch_grpc_log_linux
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cmake/
+            RESULT_VARIABLE PATCH_GRPC_RESULT
+            OUTPUT_VARIABLE PATCH_GRPC_OUTPUT
+            ERROR_VARIABLE PATCH_GRPC_ERROR)
+    if (NOT PATCH_GRPC_RESULT EQUAL "0" AND NOT PATCH_GRPC_RESULT EQUAL "1")
+        # status code 0: applied successfully, 1: already applied
+        message(FATAL_ERROR "Failed to patch grpc log_linux.cc: (${PATCH_GRPC_RESULT}) ${PATCH_GRPC_ERROR} / ${PATCH_GRPC_OUTPUT}")
+    endif()
     file(MAKE_DIRECTORY ${AGONES_THIRDPARTY_INSTALL_PATH})
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${AGONES_THIRDPARTY_INSTALL_PATH})
 
