@@ -26,7 +26,7 @@ kind-test-cluster: DOCKER_RUN_ARGS+=--network=host
 kind-test-cluster: $(ensure-build-image)
 	@if [ -z $$(kind get clusters | grep $(KIND_PROFILE)) ]; then\
 		echo "Could not find $(KIND_PROFILE) cluster. Creating...";\
-		kind create cluster --name $(KIND_PROFILE) --image kindest/node:v1.18.15 --wait 5m;\
+		kind create cluster --name $(KIND_PROFILE) --image kindest/node:v1.19.11 --wait 5m;\
 	fi
 
 # deletes the kind agones cluster
@@ -46,7 +46,7 @@ kind-install:
 
 # pushes the current dev version of agones to the kind single node cluster.
 kind-push:
-	kind load docker-image $(sidecar_tag) --name="$(KIND_PROFILE)"
+	kind load docker-image $(sidecar_linux_amd64_tag) --name="$(KIND_PROFILE)"
 	kind load docker-image $(controller_tag) --name="$(KIND_PROFILE)"
 	kind load docker-image $(ping_tag) --name="$(KIND_PROFILE)"
 	kind load docker-image $(allocator_tag) --name="$(KIND_PROFILE)"

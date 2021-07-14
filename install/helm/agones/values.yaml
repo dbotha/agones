@@ -30,8 +30,14 @@ agones:
     install: true
     cleanupOnDelete: true
   serviceaccount:
-    controller: agones-controller
-    sdk: agones-sdk
+    allocator:
+      name: agones-allocator
+      annotations: {}
+    controller:
+      name: agones-controller
+      annotations: {}
+    sdk:
+      name: agones-sdk
   createPriorityClass: true
   priorityClassName: agones-system
   controller:
@@ -147,6 +153,7 @@ agones:
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
       annotations: {}
+    disableSecretCreation: false
     generateTLS: true
     generateClientTLS: true
     disableMTLS: false
@@ -155,7 +162,7 @@ agones:
     totalRemoteAllocationTimeout: 30s
   image:
     registry: gcr.io/agones-images
-    tag: 1.15.0
+    tag: 1.16.0-rc
     controller:
       name: agones-controller
       pullPolicy: IfNotPresent

@@ -96,7 +96,16 @@ EOF
 # Add ca.crt to the allocator-tls-ca Secret
 TLS_CA_VALUE=$(kubectl get secret allocator-tls -n agones-system -ojsonpath='{.data.ca\.crt}')
 kubectl get secret allocator-tls-ca -o json -n agones-system | jq '.data["tls-ca.crt"]="'${TLS_CA_VALUE}'"' | kubectl apply -f -
+echo $TLS_CA_VALUE | base64 -d > ca.crt
+# In case of MacOS
+# echo $TLS_CA_VALUE | base64 -D > ca.crt
 ```
+
+{{% feature publishVersion="0.16.0" %}}
+### Bring Your Own Certificates (advanced)
+
+If you would like to completely manage the tls secrets outside of helm, you can create them in the namespace where agones is going to be installed, and then set the helm value `agones.allocator.disableSecretCreation` to `true`. This method will also work with the cert-manager method, as long as your certificate and secret are created ahead of time, and you populate the `allocator-tls-ca` and `allocator-client-ca` yourself.
+{{% /feature %}}
 
 ## Client Certificate
 
@@ -109,12 +118,14 @@ Otherwise, here is an example of generating a client certificate using openssl.
 ```bash
 #!/bin/bash
 
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout client.key -out client.crt
+EXTERNAL_IP=$(kubectl get services agones-allocator -n agones-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
-CERT_FILE_VALUE=$(cat ${CERT_FILE} | base64 -w 0)
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout client.key -out client.crt -addext 'subjectAltName=IP:'${EXTERNAL_IP}''
+
+CERT_FILE_VALUE=$(cat client.crt | base64 -w 0)
 
 # In case of MacOS
-# CERT_FILE_VALUE=$(cat ${CERT_FILE} | base64)
+# CERT_FILE_VALUE=$(cat client.crt | base64)
 
 # allowlist client certificate
 kubectl get secret allocator-client-ca -o json -n agones-system | jq '.data["client_trial.crt"]="'${CERT_FILE_VALUE}'"' | kubectl apply -f -
@@ -128,7 +139,7 @@ After setting up `agones-allocator` with server certificate and allowlisting the
 
 Set the environment variables and store the client secrets before allocating using gRPC or REST APIs:
 
-```
+```none
 NAMESPACE=default # replace with any namespace
 EXTERNAL_IP=$(kubectl get services agones-allocator -n agones-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 KEY_FILE=client.key

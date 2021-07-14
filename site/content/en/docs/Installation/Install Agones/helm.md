@@ -18,9 +18,9 @@ description: >
 To install the chart with the release name `my-release` using our stable helm repository:
 
 ```bash
-$ helm repo add agones https://agones.dev/chart/stable
-$ helm repo update
-$ helm install my-release --namespace agones-system --create-namespace agones/agones
+helm repo add agones https://agones.dev/chart/stable
+helm repo update
+helm install my-release --namespace agones-system --create-namespace agones/agones
 ```
 
 _We recommend installing Agones in its own namespaces, such as `agones-system` as shown above.
@@ -43,8 +43,8 @@ By default Agones is configured to work with game servers deployed in the `defau
 For example to use `default` **and** `xbox` namespaces:
 
 ```bash
-$ kubectl create namespace xbox
-$ helm install my-release agones/agones --set "gameservers.namespaces={default,xbox}" --namespace agones-system
+kubectl create namespace xbox
+helm install my-release agones/agones --set "gameservers.namespaces={default,xbox}" --namespace agones-system
 ```
 
 {{< alert title="Note" color="info">}}
@@ -54,8 +54,8 @@ You need to create your namespaces before installing Agones.
 If you want to add a new namespace afterward upgrade your release:
 
 ```bash
-$ kubectl create namespace ps4
-$ helm upgrade my-release agones/agones --reuse-values --set "gameservers.namespaces={default,xbox,ps4}" --namespace agones-system
+kubectl create namespace ps4
+helm upgrade my-release agones/agones --reuse-values --set "gameservers.namespaces={default,xbox,ps4}" --namespace agones-system
 ```
 
 ### Uninstalling the Chart
@@ -63,7 +63,7 @@ $ helm upgrade my-release agones/agones --reuse-values --set "gameservers.namesp
 To uninstall/delete the `my-release` deployment:
 
 ```bash
-$ helm uninstall my-release --namespace=agones-system
+helm uninstall my-release --namespace=agones-system
 ```
 
 ## RBAC
@@ -94,8 +94,8 @@ The following tables lists the configurable parameters of the Agones chart and t
 | `agones.metrics.stackdriverEnabled`                 | Enables Stackdriver exporter of controller metrics                                              | `false`                |
 | `agones.metrics.stackdriverProjectID`               | This overrides the default gcp project id for use with stackdriver                              | \`\`                   |
 | `agones.metrics.stackdriverLabels`                  | A set of default labels to add to all stackdriver metrics generated in form of key value pair (`key=value,key2=value2`). By default metadata are automatically added using Kubernetes API and GCP metadata enpoint.                              | \`\` |
-| `agones.serviceaccount.controller`                  | Service account name for the controller                                                         | `agones-controller`    |
-| `agones.serviceaccount.sdk`                         | Service account name for the sdk                                                                | `agones-sdk`           |
+| `agones.serviceaccount.controller`                  | Service account name for the controller. **Note**: Will be replaced with `agones.serviceaccount.controller.name` in Agones 1.16 | `agones-controller`    |
+| `agones.serviceaccount.sdk`                         | Service account name for the sdk. **Note**: Will be replaced with `agones.serviceaccount.sdk.name` in Agones 1.16        | `agones-sdk`           |
 | `agones.image.registry`                             | Global image registry for all images                                                            | `gcr.io/agones-images` |
 | `agones.image.tag`                                  | Global image tag for all images                                                                 | `{{< release-version >}}` |
 | `agones.image.controller.name`                      | Image name for the controller                                                                   | `agones-controller`    |
@@ -173,17 +173,23 @@ The following tables lists the configurable parameters of the Agones chart and t
 | `agones.allocator.annotations`                      | [Annotations][annotations] added to the Agones allocator pods                                   | `{}`                   |
 | `agones.allocator.resources`                        | Allocator pods [resource requests/limit][resources]                                             | `{}`                   |
 | `agones.allocator.nodeSelector`                     | Allocator [node labels][nodeSelector] for pod assignment                                        | `{}`                   |
+| `agones.serviceaccount.controller.name`             | Service account name for the controller                                                         | `agones-controller`    |
+| `agones.serviceaccount.sdk.name`                    | Service account name for the sdk                                                                | `agones-sdk`           |
+| `agones.serviceaccount.allocator.name`              | Service account name for the allocator                                                          | `agones-allocator`    |
+| `agones.serviceaccount.allocator.annotations`       | [Annotations][annotations] added to the Agones allocator service account                        | `{}`                   |
+| `agones.serviceaccount.controller.annotations`      | [Annotations][annotations] added to the Agones controller service account                       | `{}`                   |
 | `gameservers.namespaces`                            | a list of namespaces you are planning to use to deploy game servers                             | `["default"]`          |
 | `gameservers.minPort`                               | Minimum port to use for dynamic port allocation                                                 | `7000`                 |
 | `gameservers.maxPort`                               | Maximum port to use for dynamic port allocation                                                 | `8000`                 |
 | `gameservers.podPreserveUnknownFields`              | Disable [field pruning][pruning] and schema validation on the Pod template for a [GameServer][gameserver] definition | `false`                |
 | `helm.installTests`                                 | Add an ability to run `helm test agones` to verify the installation                             | `8000`                 |
 
-{{% feature publishVersion="1.15.0" %}}
+{{% feature publishVersion="1.16.0" %}}
 **New Configuration Features:**
 
 | Parameter                                           | Description                                                                                     | Default                |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------- |
+| `agones.allocator.disableSecretCreation`            | Disables the creation of any allocator secrets. If true, you MUST provide the `allocator-tls`, `allocator-tls-ca`, and `allocator-client-ca` secrets before installation. | `false` |
 |                       |                           |                            |
 {{% /feature %}}
 
@@ -204,7 +210,7 @@ The following tables lists the configurable parameters of the Agones chart and t
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`. For example,
 
 ```bash
-$ helm install my-release --namespace agones-system \
+helm install my-release --namespace agones-system \
   --set gameservers.minPort=1000,gameservers.maxPort=5000 agones
 ```
 
@@ -213,7 +219,7 @@ The above command will deploy Agones controllers to `agones-system` namespace. A
 Alternatively, a YAML file that specifies the values for the parameters can be provided while installing the chart. For example,
 
 ```bash
-$ helm install my-release --namespace agones-system -f values.yaml agones/agones
+helm install my-release --namespace agones-system -f values.yaml agones/agones
 ```
 
 {{< alert title="Tip" color="info">}}
@@ -228,7 +234,9 @@ In order to use `helm test` command described in this section you need to set `h
 
 Check the Agones installation by running the following command:
 ```bash
-$ helm test my-release --cleanup
+helm test my-release --cleanup
+```
+```
 RUNNING: agones-test
 PASSED: agones-test
 ```
@@ -245,7 +253,7 @@ Error: 1 test(s) failed
 That means that you skipped the `--cleanup` flag and you should either delete the `agones-test` pod manually or run with the same test `helm test my-release --cleanup` two more times.
 {{< /alert >}}
 
-## TLS Certificates
+## Controller TLS Certificates
 
 By default agones chart generates tls certificates used by the admission controller, while this is handy, it requires the agones controller to restart on each `helm upgrade` command.
 For most use cases the controller would have required a restart anyway (eg: controller image updated). However if you really need to avoid restarts we suggest that you turn off tls automatic generation (`agones.controller.generateTLS` to `false`) and provide your own certificates (`certs/server.crt`,`certs/server.key`).

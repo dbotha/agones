@@ -22,7 +22,7 @@ description: >
 
 Let's create a GameServer using the following command :
 
-```
+```bash
 kubectl create -f https://raw.githubusercontent.com/googleforgames/agones/{{< release-branch >}}/examples/simple-game-server/gameserver.yaml
 ```
 
@@ -35,7 +35,7 @@ gameserver.agones.dev/simple-game-server-4ss4j created
 This has created a GameServer record inside Kubernetes, which has also created a backing [Pod](https://kubernetes.io/docs/concepts/workloads/pods/pod/) to run our simple udp game server code in.
 If you want to see all your running GameServers you can run:
 
-```
+```bash
 kubectl get gameservers
 ```
 It should look something like this:
@@ -61,7 +61,7 @@ For the full details of the YAML file head to the [GameServer Specification Guid
 
 Let's wait for the GameServer state to become `Ready`:
 
-```
+```bash
 watch kubectl describe gameserver
 ```
 
@@ -131,7 +131,7 @@ You might also be interested to see the `Events` section, which outlines when va
 
 Let's retrieve the IP address and the allocated port of your Game Server :
 
-```
+```bash
 kubectl get gs
 ```
 
@@ -143,9 +143,9 @@ simple-game-server-7pjrq   Ready   35.233.183.43   7190   agones   4m
 ```
 
 {{< alert title="Note" color="info">}}
- If you have Agones installed on minikube the address printed will not be
-  reachable from the host machine. Instead, use the output of `minikube ip` for
-  the following section.
+If you have Agones installed on minikube, or other local Kubernetes tooling, and you are having issues connecting
+to the `GameServer`, please check the 
+[Minikube local connection workarounds]({{% ref "/docs/Installation/Creating Cluster/minikube.md#local-connection-workarounds" %}}).
 {{< /alert >}}
 
 ### 3. Connect to the GameServer

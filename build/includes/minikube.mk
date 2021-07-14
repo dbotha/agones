@@ -28,7 +28,7 @@ minikube_cert_mount := ~/.minikube:$(HOME)/.minikube
 # of the right version.
 minikube-test-cluster: DOCKER_RUN_ARGS+=--network=host -v $(minikube_cert_mount)
 minikube-test-cluster: $(ensure-build-image)
-	$(MINIKUBE) start --kubernetes-version v1.18.15 -p $(MINIKUBE_PROFILE) --vm-driver $(MINIKUBE_DRIVER)
+	$(MINIKUBE) start --kubernetes-version v1.19.12 -p $(MINIKUBE_PROFILE) --vm-driver $(MINIKUBE_DRIVER)
 
 # Connecting to minikube requires so enhanced permissions, so use this target
 # instead of `make shell` to start an interactive shell for development on minikube.
@@ -38,7 +38,7 @@ minikube-shell: $(ensure-build-image)
 # Push the local Agones Docker images that have already been built
 # via `make build` or `make build-images` into the "agones" minikube instance.
 minikube-push:
-	$(MINIKUBE) cache add $(sidecar_tag)
+	$(MINIKUBE) cache add $(sidecar_linux_amd64_tag)
 	$(MINIKUBE) cache add $(controller_tag)
 	$(MINIKUBE) cache add $(ping_tag)
 	$(MINIKUBE) cache add $(allocator_tag)

@@ -12,55 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-provider "azuread" {
-  version = "=0.4.0"
+
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 2.66"
+    }
+  }
+  required_version = ">= 0.12.26"
 }
 
 provider "azurerm" {
-  version = "=2.2.0"
-
   features {}
 }
 
-provider "random" {
-  version = "~> 2.2"
-}
-
-# Create Service Principal password
-resource "azuread_service_principal_password" "aks" {
-  end_date             = "2299-12-30T23:00:00Z" # Forever
-  service_principal_id = azuread_service_principal.aks.id
-  value                = random_string.password.result
-}
-
-# Create Azure AD Application for Service Principal
-resource "azuread_application" "aks" {
-  name = "agones-sp"
-}
-
-# Create Service Principal
-resource "azuread_service_principal" "aks" {
-  application_id = azuread_application.aks.application_id
-}
-
-# Generate random string to be used for Service Principal Password
-resource "random_string" "password" {
-  length  = 32
-  special = true
-}
-
-resource "azurerm_resource_group" "agones_rg" {
-  name     = "agonesRG"
-  location = "East US"
+resource "azurerm_resource_group" "agones" {
+  location = var.resource_group_location
+  name     = var.resource_group_name
 }
 
 resource "azurerm_kubernetes_cluster" "agones" {
   name                = var.cluster_name
-  location            = azurerm_resource_group.agones_rg.location
-  resource_group_name = azurerm_resource_group.agones_rg.name
-  dns_prefix          = "agones"
+  location            = azurerm_resource_group.agones.location
+  resource_group_name = azurerm_resource_group.agones.name
+  # don't change dns_prefix as node pool Network Security Group name uses a hash of dns_prefix on on its name
+  dns_prefix = "agones"
 
-  kubernetes_version = "1.18.14"
+  kubernetes_version = var.kubernetes_version
 
   default_node_pool {
     name                  = "default"
@@ -69,7 +48,6 @@ resource "azurerm_kubernetes_cluster" "agones" {
     os_disk_size_gb       = var.disk_size
     enable_auto_scaling   = false
     enable_node_public_ip = var.enable_node_public_ip
-    #vnet_subnet_id     = azurerm_subnet.aks.id
   }
 
   service_principal {
@@ -88,7 +66,9 @@ resource "azurerm_kubernetes_cluster_node_pool" "system" {
   node_count            = 1
   os_disk_size_gb       = var.disk_size
   enable_auto_scaling   = false
-  node_taints           = ["agones.dev/agones-system=true:NoExecute"]
+  node_taints = [
+    "agones.dev/agones-system=true:NoExecute"
+  ]
   node_labels = {
     "agones.dev/agones-system" : "true"
   }
@@ -101,42 +81,39 @@ resource "azurerm_kubernetes_cluster_node_pool" "metrics" {
   node_count            = 1
   os_disk_size_gb       = var.disk_size
   enable_auto_scaling   = false
-  node_taints           = ["agones.dev/agones-metrics=true:NoExecute"]
+  node_taints = [
+    "agones.dev/agones-metrics=true:NoExecute"
+  ]
   node_labels = {
     "agones.dev/agones-metrics" : "true"
   }
 }
 
-resource "azurerm_network_security_group" "agones_sg" {
-  name                = "agonesSecurityGroup"
-  location            = azurerm_resource_group.agones_rg.location
-  resource_group_name = azurerm_resource_group.agones_rg.name
-}
-
 resource "azurerm_network_security_rule" "gameserver" {
-  name                        = "gameserver"
-  priority                    = 100
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "UDP"
-  source_port_range           = "*"
-  destination_port_range      = "7000-8000"
-  source_address_prefix       = "*"
-  destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.agones_rg.name
-  network_security_group_name = azurerm_network_security_group.agones_sg.name
-}
+  name                       = "gameserver"
+  priority                   = 100
+  direction                  = "Inbound"
+  access                     = "Allow"
+  protocol                   = "Udp"
+  source_port_range          = "*"
+  destination_port_range     = "7000-8000"
+  source_address_prefix      = "*"
+  destination_address_prefix = "*"
+  resource_group_name        = azurerm_kubernetes_cluster.agones.node_resource_group
+  # We don't use azurerm_resources datasource to get the security group as it's not reliable: random empty resource array
+  # 55978144 are the first 8 characters of the fnv64a hash's UInt32 of master node's dns prefix ("agones")
+  network_security_group_name = "aks-agentpool-55978144-nsg"
 
-resource "azurerm_network_security_rule" "outbound" {
-  name                        = "outbound"
-  priority                    = 100
-  direction                   = "Outbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_range      = "*"
-  source_address_prefix       = "*"
-  destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.agones_rg.name
-  network_security_group_name = azurerm_network_security_group.agones_sg.name
+  depends_on = [
+    azurerm_kubernetes_cluster.agones,
+    azurerm_kubernetes_cluster_node_pool.metrics,
+    azurerm_kubernetes_cluster_node_pool.system
+  ]
+
+  # Ignore resource_group_name changes because of random case returned by AKS Api (MC_* or mc_*)
+  lifecycle {
+    ignore_changes = [
+      resource_group_name
+    ]
+  }
 }
