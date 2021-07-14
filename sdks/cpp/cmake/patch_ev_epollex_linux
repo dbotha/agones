@@ -1,0 +1,20 @@
+--- cmake-build-debug-clang/third_party/agones/sdks/cpp/gRPC/src/src/core/lib/iomgr/ev_epollex_linux_original.cc	2021-07-08 15:29:18.000000000 +0100
++++ cmake-build-debug-clang/third_party/agones/sdks/cpp/gRPC/src/src/core/lib/iomgr/ev_epollex_linux.cc	2021-07-13 17:43:54.000000000 +0100
+@@ -1102,7 +1102,7 @@
+ }
+ 
+ #ifndef NDEBUG
+-static long gettid(void) { return syscall(__NR_gettid); }
++static long sys_gettid(void) { return syscall(__NR_gettid); }
+ #endif
+ 
+ /* pollset->mu lock must be held by the caller before calling this.
+@@ -1122,7 +1122,7 @@
+ #define WORKER_PTR (&worker)
+ #endif
+ #ifndef NDEBUG
+-  WORKER_PTR->originator = gettid();
++  WORKER_PTR->originator = sys_gettid();
+ #endif
+   if (grpc_polling_trace.enabled()) {
+     gpr_log(GPR_INFO,

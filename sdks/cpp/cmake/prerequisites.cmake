@@ -46,6 +46,7 @@ function(download_git_repo NAME REPO TAG)
         ${NAME}
         GIT_REPOSITORY      "${REPO}"
         GIT_TAG             "${TAG}"
+        GIT_SHALLOW         TRUE
         PREFIX              ${NAME}
         SOURCE_DIR          "${BASE_DIR}/src"
         BINARY_DIR          "${BASE_DIR}/.bin"
@@ -164,6 +165,15 @@ if (NOT ${gRPC_FOUND})
     if (NOT PATCH_GRPC_RESULT EQUAL "0" AND NOT PATCH_GRPC_RESULT EQUAL "1")
         # status code 0: applied successfully, 1: already applied
         message(FATAL_ERROR "Failed to patch grpc log_linux.cc: (${PATCH_GRPC_RESULT}) ${PATCH_GRPC_ERROR} / ${PATCH_GRPC_OUTPUT}")
+    endif()
+    execute_process(COMMAND patch ${gRPC_SOURCE_DIR}/src/core/lib/iomgr/ev_epollex_linux.cc ./patch_ev_epollex_linux
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cmake/
+            RESULT_VARIABLE PATCH_EPOLLEX_RESULT
+            OUTPUT_VARIABLE PATCH_EPOLLEX_OUTPUT
+            ERROR_VARIABLE PATCH_EPOLLEX_ERROR)
+    if (NOT PATCH_EPOLLEX_RESULT EQUAL "0" AND NOT PATCH_EPOLLEX_RESULT EQUAL "1")
+        # status code 0: applied successfully, 1: already applied
+        message(FATAL_ERROR "Failed to patch grpc ev_epollex_linux.cc: (${PATCH_EPOLLEX_RESULT}) ${PATCH_EPOLLEX_ERROR} / ${PATCH_EPOLLEX_OUTPUT}")
     endif()
     file(MAKE_DIRECTORY ${AGONES_THIRDPARTY_INSTALL_PATH})
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${AGONES_THIRDPARTY_INSTALL_PATH})
