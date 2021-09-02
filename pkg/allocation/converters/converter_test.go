@@ -15,27 +15,34 @@
 package converters
 
 import (
+	"fmt"
 	"testing"
 
 	pb "agones.dev/agones/pkg/allocation/go"
 	"agones.dev/agones/pkg/apis"
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	allocationv1 "agones.dev/agones/pkg/apis/allocation/v1"
+	"agones.dev/agones/pkg/util/runtime"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
+	allocated := agonesv1.GameServerStateAllocated
+	ready := agonesv1.GameServerStateReady
+
 	tests := []struct {
-		name               string
-		in                 *pb.AllocationRequest
-		want               *allocationv1.GameServerAllocation
-		skipConvertFromGSA bool
+		name     string
+		features string
+		in       *pb.AllocationRequest
+		want     *allocationv1.GameServerAllocation
 	}{
 		{
-			name: "all fields are set",
+			name:     "all fields are set (StateAllocationFilter, PlayerAllocationFilter)",
+			features: fmt.Sprintf("%s=true&%s=true", runtime.FeaturePlayerAllocationFilter, runtime.FeatureStateAllocationFilter),
 			in: &pb.AllocationRequest{
 				Namespace: "ns",
 				MultiClusterSetting: &pb.MultiClusterSetting{
@@ -46,15 +53,25 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 						},
 					},
 				},
-				RequiredGameServerSelector: &pb.LabelSelector{
+				RequiredGameServerSelector: &pb.GameServerSelector{
 					MatchLabels: map[string]string{
 						"c": "d",
 					},
+					GameServerState: pb.GameServerSelector_READY,
+					Players: &pb.PlayerSelector{
+						MinAvailable: 10,
+						MaxAvailable: 20,
+					},
 				},
-				PreferredGameServerSelectors: []*pb.LabelSelector{
+				PreferredGameServerSelectors: []*pb.GameServerSelector{
 					{
 						MatchLabels: map[string]string{
 							"e": "f",
+						},
+						GameServerState: pb.GameServerSelector_ALLOCATED,
+						Players: &pb.PlayerSelector{
+							MinAvailable: 5,
+							MaxAvailable: 10,
 						},
 					},
 					{
@@ -88,20 +105,131 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 							},
 						},
 					},
-					Required: metav1.LabelSelector{
+					Required: allocationv1.GameServerSelector{
+						LabelSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"c": "d",
+							},
+						},
+						GameServerState: &ready,
+						Players:         &allocationv1.PlayerSelector{MinAvailable: 10, MaxAvailable: 20},
+					},
+					Preferred: []allocationv1.GameServerSelector{
+						{
+							LabelSelector: metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"e": "f",
+								},
+							},
+							GameServerState: &allocated,
+							Players:         &allocationv1.PlayerSelector{MinAvailable: 5, MaxAvailable: 10},
+						},
+						{
+							LabelSelector: metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"g": "h",
+								},
+							},
+							GameServerState: &ready,
+						},
+					},
+					Scheduling: apis.Packed,
+					MetaPatch: allocationv1.MetaPatch{
+						Labels: map[string]string{
+							"i": "j",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "all fields are set",
+			in: &pb.AllocationRequest{
+				Namespace: "ns",
+				MultiClusterSetting: &pb.MultiClusterSetting{
+					Enabled: true,
+					PolicySelector: &pb.LabelSelector{
+						MatchLabels: map[string]string{
+							"a": "b",
+						},
+					},
+				},
+				RequiredGameServerSelector: &pb.GameServerSelector{
+					MatchLabels: map[string]string{
+						"c": "d",
+					},
+				},
+				PreferredGameServerSelectors: []*pb.GameServerSelector{
+					{
+						MatchLabels: map[string]string{
+							"e": "f",
+						},
+					},
+					{
+						MatchLabels: map[string]string{
+							"g": "h",
+						},
+					},
+				},
+				GameServerSelectors: []*pb.GameServerSelector{
+					{
+						MatchLabels: map[string]string{
+							"m": "n",
+						},
+					},
+				},
+				Scheduling: pb.AllocationRequest_Packed,
+				Metadata: &pb.MetaPatch{
+					Labels: map[string]string{
+						"i": "j",
+					},
+				},
+				MetaPatch: &pb.MetaPatch{
+					Labels: map[string]string{
+						"i": "j",
+					},
+				},
+			},
+			want: &allocationv1.GameServerAllocation{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+				},
+				Spec: allocationv1.GameServerAllocationSpec{
+					MultiClusterSetting: allocationv1.MultiClusterSetting{
+						Enabled: true,
+						PolicySelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"a": "b",
+							},
+						},
+					},
+					Required: allocationv1.GameServerSelector{LabelSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"c": "d",
 						},
-					},
-					Preferred: []metav1.LabelSelector{
+					}},
+					Preferred: []allocationv1.GameServerSelector{
 						{
-							MatchLabels: map[string]string{
-								"e": "f",
+							LabelSelector: metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"e": "f",
+								},
 							},
 						},
 						{
-							MatchLabels: map[string]string{
-								"g": "h",
+							LabelSelector: metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"g": "h",
+								},
+							},
+						},
+					},
+					Selectors: []allocationv1.GameServerSelector{
+						{
+							LabelSelector: metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"m": "n",
+								},
 							},
 						},
 					},
@@ -119,8 +247,8 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 			in: &pb.AllocationRequest{
 				Namespace:                    "",
 				MultiClusterSetting:          &pb.MultiClusterSetting{},
-				RequiredGameServerSelector:   &pb.LabelSelector{},
-				PreferredGameServerSelectors: []*pb.LabelSelector{},
+				RequiredGameServerSelector:   &pb.GameServerSelector{},
+				PreferredGameServerSelectors: []*pb.GameServerSelector{},
 				Scheduling:                   pb.AllocationRequest_Distributed,
 				Metadata:                     &pb.MetaPatch{},
 			},
@@ -135,7 +263,57 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 					Scheduling: apis.Distributed,
 				},
 			},
-			skipConvertFromGSA: true,
+		},
+		{
+			name:     "empty fields to GSA (StateAllocationFilter, PlayerAllocationFilter)",
+			features: fmt.Sprintf("%s=true&%s=true", runtime.FeaturePlayerAllocationFilter, runtime.FeatureStateAllocationFilter),
+			in: &pb.AllocationRequest{
+				Namespace:                    "",
+				MultiClusterSetting:          &pb.MultiClusterSetting{},
+				RequiredGameServerSelector:   &pb.GameServerSelector{},
+				PreferredGameServerSelectors: []*pb.GameServerSelector{},
+				Scheduling:                   pb.AllocationRequest_Distributed,
+				Metadata:                     &pb.MetaPatch{},
+			},
+			want: &allocationv1.GameServerAllocation{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "",
+				},
+				Spec: allocationv1.GameServerAllocationSpec{
+					MultiClusterSetting: allocationv1.MultiClusterSetting{
+						Enabled: false,
+					},
+					Required: allocationv1.GameServerSelector{
+						GameServerState: &ready,
+					},
+					Scheduling: apis.Distributed,
+				},
+			},
+		},
+		{
+			name:     "empty fields to GSA (StateAllocationFilter, PlayerAllocationFilter) with selectors fields",
+			features: fmt.Sprintf("%s=true&%s=true", runtime.FeaturePlayerAllocationFilter, runtime.FeatureStateAllocationFilter),
+			in: &pb.AllocationRequest{
+				Namespace:           "",
+				MultiClusterSetting: &pb.MultiClusterSetting{},
+				GameServerSelectors: []*pb.GameServerSelector{{}},
+				Scheduling:          pb.AllocationRequest_Distributed,
+				Metadata:            &pb.MetaPatch{},
+			},
+			want: &allocationv1.GameServerAllocation{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "",
+				},
+				Spec: allocationv1.GameServerAllocationSpec{
+					MultiClusterSetting: allocationv1.MultiClusterSetting{
+						Enabled: false,
+					},
+					Selectors: []allocationv1.GameServerSelector{
+						{GameServerState: &ready},
+					},
+					Scheduling: apis.Distributed,
+				},
+			},
 		},
 		{
 			name: "empty object to GSA",
@@ -145,7 +323,6 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 					Scheduling: apis.Packed,
 				},
 			},
-			skipConvertFromGSA: true,
 		},
 		{
 			name: "nil object",
@@ -157,8 +334,8 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 			in: &pb.AllocationRequest{
 				Namespace:                    "",
 				MultiClusterSetting:          &pb.MultiClusterSetting{},
-				RequiredGameServerSelector:   &pb.LabelSelector{},
-				PreferredGameServerSelectors: []*pb.LabelSelector{},
+				RequiredGameServerSelector:   &pb.GameServerSelector{},
+				PreferredGameServerSelectors: []*pb.GameServerSelector{},
 				Scheduling:                   pb.AllocationRequest_Distributed,
 				MetaPatch: &pb.MetaPatch{
 					Labels: map[string]string{
@@ -182,15 +359,14 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 					},
 				},
 			},
-			skipConvertFromGSA: true,
 		},
 		{
 			name: "Prefers metadata over metapatch field",
 			in: &pb.AllocationRequest{
 				Namespace:                    "",
 				MultiClusterSetting:          &pb.MultiClusterSetting{},
-				RequiredGameServerSelector:   &pb.LabelSelector{},
-				PreferredGameServerSelectors: []*pb.LabelSelector{},
+				RequiredGameServerSelector:   &pb.GameServerSelector{},
+				PreferredGameServerSelectors: []*pb.GameServerSelector{},
 				Scheduling:                   pb.AllocationRequest_Distributed,
 				Metadata: &pb.MetaPatch{
 					Labels: map[string]string{
@@ -219,7 +395,6 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 					},
 				},
 			},
-			skipConvertFromGSA: true,
 		},
 	}
 	for _, tc := range tests {
@@ -227,13 +402,12 @@ func TestConvertAllocationRequestToGameServerAllocation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			runtime.FeatureTestMutex.Lock()
+			defer runtime.FeatureTestMutex.Unlock()
+			require.NoError(t, runtime.ParseFeatures(tc.features))
+
 			out := ConvertAllocationRequestToGSA(tc.in)
 			assert.Equal(t, tc.want, out, "mismatch with want after conversion: \"%s\"", tc.name)
-
-			if !tc.skipConvertFromGSA {
-				gsa := ConvertGSAToAllocationRequest(tc.want)
-				assert.Equal(t, tc.in, gsa, "mismatch with input after double conversion \"%s\"", tc.name)
-			}
 		})
 	}
 }
@@ -258,12 +432,11 @@ func TestConvertGSAToAllocationRequestEmpty(t *testing.T) {
 				},
 			},
 			want: &pb.AllocationRequest{
-				Namespace:                  "",
-				MultiClusterSetting:        &pb.MultiClusterSetting{},
-				RequiredGameServerSelector: &pb.LabelSelector{},
-				Scheduling:                 pb.AllocationRequest_Distributed,
-				Metadata:                   &pb.MetaPatch{},
-				MetaPatch:                  &pb.MetaPatch{},
+				Namespace:           "",
+				MultiClusterSetting: &pb.MultiClusterSetting{},
+				Scheduling:          pb.AllocationRequest_Distributed,
+				Metadata:            &pb.MetaPatch{},
+				MetaPatch:           &pb.MetaPatch{},
 			},
 		}, {
 			name: "empty object",
@@ -273,10 +446,9 @@ func TestConvertGSAToAllocationRequestEmpty(t *testing.T) {
 				},
 			},
 			want: &pb.AllocationRequest{
-				MultiClusterSetting:        &pb.MultiClusterSetting{},
-				RequiredGameServerSelector: &pb.LabelSelector{},
-				Metadata:                   &pb.MetaPatch{},
-				MetaPatch:                  &pb.MetaPatch{},
+				MultiClusterSetting: &pb.MultiClusterSetting{},
+				Metadata:            &pb.MetaPatch{},
+				MetaPatch:           &pb.MetaPatch{},
 			},
 		},
 	}
