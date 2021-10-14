@@ -37,10 +37,6 @@ const (
 	// FeatureSDKWatchSendOnExecute is a feature flag to enable/disable immediate game server return after SDK.WatchGameServer is called
 	FeatureSDKWatchSendOnExecute Feature = "SDKWatchSendOnExecute"
 
-	// FeatureRollingUpdateOnReady is a feature flag to enable/disable rolling update fix of scale down, when ReadyReplicas
-	// count is taken into account
-	FeatureRollingUpdateOnReady Feature = "RollingUpdateOnReady"
-
 	// NodeExternalDNS is a feature flag to enable/disable node ExternalDNS and InternalDNS use as GameServer address
 	NodeExternalDNS Feature = "NodeExternalDNS"
 
@@ -53,6 +49,9 @@ const (
 
 	// FeatureCustomFasSyncInterval is a feature flag that enables custom the FleetAutoscaler rsync interval
 	FeatureCustomFasSyncInterval Feature = "CustomFasSyncInterval"
+
+	// FeatureSDKGracefulTermination is a feature flag that enables SDK to support gracefulTermination
+	FeatureSDKGracefulTermination Feature = "SDKGracefulTermination"
 )
 
 var (
@@ -63,11 +62,11 @@ var (
 		FeatureExample:                true,
 		FeaturePlayerTracking:         false,
 		FeatureSDKWatchSendOnExecute:  true,
-		FeatureRollingUpdateOnReady:   true,
 		NodeExternalDNS:               false,
 		FeatureStateAllocationFilter:  false,
 		FeaturePlayerAllocationFilter: false,
 		FeatureCustomFasSyncInterval:  false,
+		FeatureSDKGracefulTermination: false,
 	}
 
 	// featureGates is the storage of what features are enabled

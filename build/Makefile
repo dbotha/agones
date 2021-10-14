@@ -24,7 +24,7 @@
 #
 
 # base version target. This is usually the next release.
-base_version = 1.17.0
+base_version = 1.18.0
 
 # agones image release registry
 release_registry = gcr.io/agones-images
@@ -328,11 +328,11 @@ install: $(ensure-build-image) install-custom-pull-secret
 		--set agones.image.controller.pullPolicy=$(IMAGE_PULL_POLICY),agones.image.sdk.alwaysPull=$(ALWAYS_PULL_SIDECAR) \
 		--set agones.image.controller.pullSecret=$(IMAGE_PULL_SECRET) \
 		--set agones.ping.http.serviceType=$(PING_SERVICE_TYPE),agones.ping.udp.serviceType=$(PING_SERVICE_TYPE) \
-		--set agones.allocator.http.serviceType=$(ALLOCATOR_SERVICE_TYPE) \
+		--set agones.allocator.service.serviceType=$(ALLOCATOR_SERVICE_TYPE) \
 		--set agones.controller.logLevel=$(LOG_LEVEL) \
 		--set agones.crds.cleanupOnDelete=$(CRD_CLEANUP) \
 		--set agones.featureGates=$(FEATURE_GATES) \
-		--set agones.allocator.http.loadBalancerIP=$(EXTERNAL_IP) \
+		--set agones.allocator.service.loadBalancerIP=$(EXTERNAL_IP) \
 		$(HELM_ARGS) \
 		agones $(mount_path)/install/helm/agones/
 
